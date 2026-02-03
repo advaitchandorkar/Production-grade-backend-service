@@ -11,8 +11,21 @@ router = APIRouter(prefix="/inventory", tags=["inventory"])
 
 
 @router.get("", response_model=list[InventoryRead])
-def list_items(db: Session = Depends(get_db), user=Depends(get_current_user)):
-    items = db.execute(select(InventoryItem).order_by(InventoryItem.created_at.desc())).scalars().all()
+def list_items(
+    limit: int = 20,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    limit = min(max(limit, 1), 100)
+    offset = max(offset, 0)
+    items = (
+        db.execute(
+            select(InventoryItem).order_by(InventoryItem.created_at.desc()).limit(limit).offset(offset)
+        )
+        .scalars()
+        .all()
+    )
     return items
 
 
