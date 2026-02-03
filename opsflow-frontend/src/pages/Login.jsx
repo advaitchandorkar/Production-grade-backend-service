@@ -1,51 +1,97 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { loginUser, registerUser } from "../api.js";
 
-export default function Login({ onAuth }) {
+export default function Login({ onAuth, pushToast }) {
+  const navigate = useNavigate();
   const [registerData, setRegisterData] = useState({ email: "", password: "" });
   const [loginData, setLoginData] = useState({ email: "", password: "" });
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleRegister = async (event) => {
     event.preventDefault();
-    setError("");
-    setMessage("");
+    setIsLoading(true);
 
     try {
       await registerUser(registerData);
       const tokenResponse = await loginUser(registerData);
       onAuth(tokenResponse.access_token);
-      setMessage("Registered and logged in.");
+      pushToast?.({
+        type: "success",
+        title: "Welcome to OpsFlow",
+        message: "Your account is ready."
+      });
+      navigate("/inventory");
     } catch (err) {
-      setError(err.message || "Registration failed");
+      pushToast?.({
+        type: "error",
+        title: "Registration failed",
+        message: err.message || "Try a different email."
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleLogin = async (event) => {
     event.preventDefault();
-    setError("");
-    setMessage("");
+    setIsLoading(true);
 
     try {
       const tokenResponse = await loginUser(loginData);
       onAuth(tokenResponse.access_token);
-      setMessage("Logged in.");
+      pushToast?.({
+        type: "success",
+        title: "Welcome back",
+        message: "You're signed in."
+      });
+      navigate("/inventory");
     } catch (err) {
-      setError(err.message || "Login failed");
+      pushToast?.({
+        type: "error",
+        title: "Login failed",
+        message: err.message || "Check your credentials."
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <section className="page">
-      <div className="page-header">
-        <h1>Welcome to OpsFlow</h1>
-        <p>Sign in to manage inventory and orders.</p>
+      <div className="hero">
+        <div>
+          <p className="eyebrow">Ops intelligence in one place</p>
+          <h1>Coordinate inventory and orders with a live control plane.</h1>
+          <p className="lead">
+            OpsFlow keeps every team aligned with a fast, focused view of stock,
+            orders, and actionables. Authenticate to start orchestrating.
+          </p>
+          <div className="hero-highlights">
+            <div>
+              <h3>Live inventory</h3>
+              <p className="muted">Track stock movements without leaving the dashboard.</p>
+            </div>
+            <div>
+              <h3>Order momentum</h3>
+              <p className="muted">Create and monitor orders with clear status visibility.</p>
+            </div>
+          </div>
+        </div>
+        <div className="hero-card">
+          <h2>Get started fast</h2>
+          <p className="muted">Use a real email to register. You'll be logged in instantly.</p>
+          <div className="pill-group">
+            <span className="pill ghost">JWT secure</span>
+            <span className="pill ghost">Postgres ready</span>
+            <span className="pill ghost">FastAPI docs</span>
+          </div>
+        </div>
       </div>
 
       <div className="grid">
-        <form className="card" onSubmit={handleRegister}>
+        <form className="card elevated" onSubmit={handleRegister}>
           <h2>Create account</h2>
           <label>
             Email
@@ -69,12 +115,12 @@ export default function Login({ onAuth }) {
               required
             />
           </label>
-          <button className="btn" type="submit">
-            Register
+          <button className="btn" type="submit" disabled={isLoading}>
+            {isLoading ? "Creating..." : "Register"}
           </button>
         </form>
 
-        <form className="card" onSubmit={handleLogin}>
+        <form className="card elevated" onSubmit={handleLogin}>
           <h2>Sign in</h2>
           <label>
             Email
@@ -98,14 +144,12 @@ export default function Login({ onAuth }) {
               required
             />
           </label>
-          <button className="btn" type="submit">
-            Login
+          <button className="btn" type="submit" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Login"}
           </button>
         </form>
       </div>
 
-      {message ? <p className="notice success">{message}</p> : null}
-      {error ? <p className="notice error">{error}</p> : null}
     </section>
   );
 }

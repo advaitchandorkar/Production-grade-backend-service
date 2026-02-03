@@ -1,18 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { createOrder, fetchOrders } from "../api.js";
+import Loading from "../components/Loading.jsx";
 
-export default function Orders({ token }) {
+export default function Orders({ token, pushToast }) {
   const [orders, setOrders] = useState([]);
   const [form, setForm] = useState({ item_name: "", quantity: 1 });
-  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const loadOrders = async () => {
+    setIsLoading(true);
     try {
       const data = await fetchOrders(token);
       setOrders(data);
     } catch (err) {
-      setError(err.message || "Failed to load orders");
+      pushToast?.({
+        type: "error",
+        title: "Orders unavailable",
+        message: err.message || "Try again shortly."
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -24,16 +32,30 @@ export default function Orders({ token }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setError("");
 
     try {
       const newOrder = await createOrder(form, token);
       setOrders([newOrder, ...orders]);
       setForm({ item_name: "", quantity: 1 });
+      pushToast?.({
+        type: "success",
+        title: "Order created",
+        message: `${newOrder.item_name} queued.`
+      });
     } catch (err) {
-      setError(err.message || "Failed to create order");
+      pushToast?.({
+        type: "error",
+        title: "Order failed",
+        message: err.message || "Check the details and retry."
+      });
     }
   };
+
+  const totalOrders = orders.length;
+  const pendingOrders = useMemo(
+    () => orders.filter((order) => order.status === "pending").length,
+    [orders]
+  );
 
   if (!token) {
     return (
@@ -46,54 +68,81 @@ export default function Orders({ token }) {
 
   return (
     <section className="page">
-      <div className="page-header">
-        <h1>Orders</h1>
-        <p>Create orders and keep an eye on fulfillment.</p>
-      </div>
-
-      <form className="card" onSubmit={handleSubmit}>
-        <h2>Create order</h2>
-        <label>
-          Item name
-          <input
-            type="text"
-            value={form.item_name}
-            onChange={(event) => setForm({ ...form, item_name: event.target.value })}
-            required
-          />
-        </label>
-        <label>
-          Quantity
-          <input
-            type="number"
-            min="1"
-            value={form.quantity}
-            onChange={(event) =>
-              setForm({ ...form, quantity: Number(event.target.value) })
-            }
-            required
-          />
-        </label>
-        <button className="btn" type="submit">
-          Create order
-        </button>
-      </form>
-
-      <div className="list">
-        {orders.map((order) => (
-          <div key={order.id} className="list-row">
-            <div>
-              <strong>{order.item_name}</strong>
-              <p className="muted">Created: {new Date(order.created_at).toLocaleString()}</p>
-            </div>
-            <span className="pill">{order.status}</span>
-            <span className="pill">Qty: {order.quantity}</span>
+      <div className="page-header split">
+        <div>
+          <h1>Orders</h1>
+          <p>Create orders and keep a clear fulfillment pulse.</p>
+        </div>
+        <div className="stats">
+          <div className="stat-card">
+            <span className="stat-label">Orders</span>
+            <strong>{totalOrders}</strong>
           </div>
-        ))}
-        {orders.length === 0 ? <p className="muted">No orders yet.</p> : null}
+          <div className="stat-card">
+            <span className="stat-label">Pending</span>
+            <strong>{pendingOrders}</strong>
+          </div>
+        </div>
       </div>
 
-      {error ? <p className="notice error">{error}</p> : null}
+      <div className="grid two-col">
+        <form className="card elevated" onSubmit={handleSubmit}>
+          <h2>Create order</h2>
+          <label>
+            Item name
+            <input
+              type="text"
+              value={form.item_name}
+              onChange={(event) => setForm({ ...form, item_name: event.target.value })}
+              required
+            />
+          </label>
+          <label>
+            Quantity
+            <input
+              type="number"
+              min="1"
+              value={form.quantity}
+              onChange={(event) =>
+                setForm({ ...form, quantity: Number(event.target.value) })
+              }
+              required
+            />
+          </label>
+          <button className="btn" type="submit">
+            Create order
+          </button>
+        </form>
+
+        <div className="card elevated scroll-card">
+          <div className="list-header">
+            <h2>Latest orders</h2>
+            {isLoading ? <span className="muted">Syncing...</span> : null}
+          </div>
+          {isLoading ? <Loading label="Syncing orders" full={false} /> : null}
+          <div className="list compact scroll-body">
+            {orders.map((order) => (
+              <div key={order.id} className="list-row">
+                <div>
+                  <strong>{order.item_name}</strong>
+                  <p className="muted">
+                    Created: {new Date(order.created_at).toLocaleString()}
+                  </p>
+                </div>
+                <span className="pill">{order.status}</span>
+                <span className="pill">Qty: {order.quantity}</span>
+              </div>
+            ))}
+            {orders.length === 0 && !isLoading ? (
+              <div className="empty-state">
+                <h3>No orders yet</h3>
+                <p className="muted">Create your first order to begin tracking flow.</p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
     </section>
   );
 }
