@@ -2,9 +2,9 @@
 
 ![CI](https://img.shields.io/badge/CI-pending-lightgrey)
 
-Live Demo: https://your-vercel-app.vercel.app
+Live Demo: yet to hosted
 
-API Docs: https://your-api-domain.example.com/docs
+API Docs: --------
 
 Production-style FastAPI backend with Postgres, SQLAlchemy 2.0, Alembic, and JWT auth.
 
